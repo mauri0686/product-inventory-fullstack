@@ -5,15 +5,31 @@
         <caption id="products-table-caption">Products in inventory</caption>
         <thead>
             <tr>
-                <th scope="col">Name</th>
-                <th scope="col" class="numeric-column">Price</th>
-                <th scope="col" class="numeric-column">Quantity</th>
-                <th scope="col">Status</th>
+                <th scope="col" aria-sort="@AriaSort(SortColumn.Name)">
+                    <button type="button" class="column-sort" @onclick="() => ToggleSort(SortColumn.Name)">
+                        Name<span class="sort-indicator" aria-hidden="true">@Glyph(SortColumn.Name)</span>
+                    </button>
+                </th>
+                <th scope="col" class="numeric-column" aria-sort="@AriaSort(SortColumn.Price)">
+                    <button type="button" class="column-sort" @onclick="() => ToggleSort(SortColumn.Price)">
+                        Price<span class="sort-indicator" aria-hidden="true">@Glyph(SortColumn.Price)</span>
+                    </button>
+                </th>
+                <th scope="col" class="numeric-column" aria-sort="@AriaSort(SortColumn.Quantity)">
+                    <button type="button" class="column-sort" @onclick="() => ToggleSort(SortColumn.Quantity)">
+                        Quantity<span class="sort-indicator" aria-hidden="true">@Glyph(SortColumn.Quantity)</span>
+                    </button>
+                </th>
+                <th scope="col" aria-sort="@AriaSort(SortColumn.Status)">
+                    <button type="button" class="column-sort" @onclick="() => ToggleSort(SortColumn.Status)">
+                        Status<span class="sort-indicator" aria-hidden="true">@Glyph(SortColumn.Status)</span>
+                    </button>
+                </th>
                 <th scope="col" class="actions-column">Actions</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var product in Products)
+            @foreach (var product in SortedProducts)
             {
                 <tr @key="product.Id">
                     <td data-label="Name" class="product-name">@product.Name</td>
@@ -74,6 +90,11 @@
 @code {
     private static readonly CultureInfo UsCulture = CultureInfo.GetCultureInfo("en-US");
 
+    private enum SortColumn { Name, Price, Quantity, Status }
+
+    private SortColumn _sortColumn = SortColumn.Name;
+    private bool _descending;
+
     [Parameter, EditorRequired]
     public IReadOnlyList<ProductResponse> Products { get; set; } = Array.Empty<ProductResponse>();
 
@@ -105,6 +126,47 @@
     private Task ConfirmDeleteAsync(ProductResponse product) => OnDeleteConfirmed.InvokeAsync(product);
 
     private Task CancelDeleteAsync() => OnDeleteCancelled.InvokeAsync();
+
+    private IReadOnlyList<ProductResponse> SortedProducts
+    {
+        get
+        {
+            var ordered = _sortColumn switch
+            {
+                SortColumn.Price => Order(p => p.Price),
+                SortColumn.Quantity => Order(p => p.Quantity),
+                SortColumn.Status => Order(p => p.IsActive),
+                _ => Order(p => p.Name, StringComparer.OrdinalIgnoreCase),
+            };
+            return ordered.ThenBy(p => p.Id).ToArray();
+        }
+    }
+
+    private IOrderedEnumerable<ProductResponse> Order<TKey>(
+        Func<ProductResponse, TKey> keySelector,
+        IComparer<TKey>? comparer = null) =>
+        _descending
+            ? Products.OrderByDescending(keySelector, comparer)
+            : Products.OrderBy(keySelector, comparer);
+
+    private void ToggleSort(SortColumn column)
+    {
+        if (_sortColumn == column)
+        {
+            _descending = !_descending;
+        }
+        else
+        {
+            _sortColumn = column;
+            _descending = false;
+        }
+    }
+
+    private string AriaSort(SortColumn column) =>
+        _sortColumn != column ? "none" : _descending ? "descending" : "ascending";
+
+    private string Glyph(SortColumn column) =>
+        _sortColumn != column ? string.Empty : _descending ? " ▼" : " ▲";
 
     private static string FormatCurrency(decimal value) => value.ToString("C2", UsCulture);
 }
