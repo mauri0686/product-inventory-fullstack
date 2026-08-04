@@ -17,10 +17,12 @@ The free API can take about a minute to wake after inactivity. The demo is not a
 
 - Complete create, read, update, and delete flow through Blazor → API → PostgreSQL.
 - Immediate, case-insensitive client-side search while typing.
+- Client-side column sorting and pagination over the loaded inventory, plus automatic dark mode.
 - Server-side search, active status and price filters, sorting, and pagination.
 - Dashboard for total products, active products, and total inventory value.
 - A case-insensitive unique-name domain rule, enforced before persistence and by a database index.
 - Consistent `ProblemDetails`, structured JSON logs, trace IDs, and live/ready health checks.
+- Per-client rate limiting on the public API, with health checks exempt.
 - Exactly 100 deterministic demo products created through EF Core 9 seeding.
 - Unit, PostgreSQL integration, bUnit component, and deployed Playwright smoke tests.
 - GitHub Actions quality gates, GitHub Pages delivery, Docker, and Render infrastructure as code.
@@ -157,7 +159,7 @@ The deployed smoke test creates a uniquely named product, edits it, searches for
 
 The WebAssembly `HttpProductRepository` is the only place with the challenge-required `Task.Delay(500)`. Each public repository operation supports cancellation. The API, application layer, EF Core, seeding, and tests contain no artificial latency.
 
-The client loads every API page in batches of 100. Search then filters the in-memory view immediately and case-insensitively; it does not issue a delayed request on each keystroke. Dashboard figures always describe the complete collection, not the filtered view. PostgreSQL remains the only source of truth, so browser storage is intentionally absent.
+The client loads every API page in batches of 100. Search then filters the in-memory view immediately and case-insensitively; it does not issue a delayed request on each keystroke. Column sorting and pagination also run in the browser over the loaded collection, so the table stays responsive and the mobile view is not one long scroll. Dashboard figures always describe the complete collection, not the filtered view. PostgreSQL remains the only source of truth, so browser storage is intentionally absent.
 
 ## Deployment
 
@@ -165,6 +167,7 @@ The client loads every API page in batches of 100. Search then filters the in-me
 - `.github/workflows/pages.yml` runs only after a green CI revision, publishes standalone WebAssembly, sets the project-site base path, adds `.nojekyll` and a `404.html` fallback, then deploys through GitHub Pages.
 - `render.yaml` defines one free Docker web service and one free PostgreSQL 17 database in the same region. Render deploys only after linked checks pass.
 - CORS accepts only configured localhost origins and `https://mauri0686.github.io`; credentials and wildcard origins are disabled.
+- The public API applies a per-client fixed-window rate limit; health checks are exempt and the test environment is not throttled.
 
 No credentials are committed. `DATABASE_URL` is injected from the Render database resource.
 

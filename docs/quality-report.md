@@ -33,6 +33,16 @@ delivered revision.
 - CRUD walkthrough (create → read → duplicate → invalid → update → delete → read) → `201/200/409/400/200/204/404`; inventory returns to 100.
 - Published Blazor UI loads the 100 seeded products and the dashboard totals from the live API.
 
+## Post-delivery enhancements (2026-08-04)
+
+Added within the challenge constraints (no UI frameworks; Blazor authentication still intentionally
+absent) and verified against the live deployment:
+
+- Client-side column sorting with accessible `aria-sort` — verified: sorting by price descending lists Product 100 first.
+- Client-side pagination of the table (10 per page) so the mobile view is not one long scroll; the dashboard totals still cover the whole collection.
+- Automatic dark mode via `prefers-color-scheme` — verified: dark background `#0d1117`.
+- Per-client fixed-window rate limiting on the public API — verified: a 240-request burst returned `429` responses while the Playwright flow stayed green; health checks are exempt.
+
 ## Gate sign-offs
 
 - **Product Owner** — Scope matches both challenges; no speculative features. Approved.
