@@ -29,7 +29,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var product in SortedProducts)
+            @foreach (var product in PageProducts)
             {
                 <tr @key="product.Id">
                     <td data-label="Name" class="product-name">@product.Name</td>
@@ -87,13 +87,35 @@
     </table>
 </div>
 
+@if (TotalPages > 1)
+{
+    <nav class="pager" aria-label="Table pagination">
+        <button class="button button-small button-secondary"
+                type="button"
+                disabled="@(ClampedPage <= 1)"
+                @onclick="PreviousPage">
+            Previous
+        </button>
+        <span class="pager-status" role="status" aria-live="polite">Page @ClampedPage of @TotalPages</span>
+        <button class="button button-small button-secondary"
+                type="button"
+                disabled="@(ClampedPage >= TotalPages)"
+                @onclick="NextPage">
+            Next
+        </button>
+    </nav>
+}
+
 @code {
     private static readonly CultureInfo UsCulture = CultureInfo.GetCultureInfo("en-US");
 
     private enum SortColumn { Name, Price, Quantity, Status }
 
+    private const int PageSize = 10;
+
     private SortColumn _sortColumn = SortColumn.Name;
     private bool _descending;
+    private int _currentPage = 1;
 
     [Parameter, EditorRequired]
     public IReadOnlyList<ProductResponse> Products { get; set; } = Array.Empty<ProductResponse>();
@@ -142,6 +164,17 @@
         }
     }
 
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(SortedProducts.Count / (double)PageSize));
+
+    private int ClampedPage => Math.Clamp(_currentPage, 1, TotalPages);
+
+    private IReadOnlyList<ProductResponse> PageProducts =>
+        SortedProducts.Skip((ClampedPage - 1) * PageSize).Take(PageSize).ToArray();
+
+    private void PreviousPage() => _currentPage = Math.Max(1, ClampedPage - 1);
+
+    private void NextPage() => _currentPage = Math.Min(TotalPages, ClampedPage + 1);
+
     private IOrderedEnumerable<ProductResponse> Order<TKey>(
         Func<ProductResponse, TKey> keySelector,
         IComparer<TKey>? comparer = null) =>
@@ -160,6 +193,8 @@
             _sortColumn = column;
             _descending = false;
         }
+
+        _currentPage = 1;
     }
 
     private string AriaSort(SortColumn column) =>

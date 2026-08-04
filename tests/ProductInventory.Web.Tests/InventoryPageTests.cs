@@ -185,6 +185,30 @@ public sealed class InventoryPageTests : BunitContext
         Assert.StartsWith("Mechanical keyboard", FirstRowName(page), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Paginates_the_display_and_navigates_between_pages()
+    {
+        var products = Enumerable.Range(1, 25)
+            .Select(i => new ProductResponse(Guid.NewGuid(), $"Item {i:D2}", i, i, true))
+            .ToArray();
+        var repository = new FakeProductRepository(products);
+        Services.AddSingleton<IProductRepository>(repository);
+        var page = Render<Home>();
+        page.WaitForAssertion(() => Assert.Contains("Item 01", page.Markup));
+
+        Assert.Equal(10, page.FindAll("tbody tr").Count);
+        Assert.Contains("Page 1 of 3", page.Markup);
+
+        FindButton(page, "Next").Click();
+
+        page.WaitForAssertion(() =>
+        {
+            Assert.Contains("Page 2 of 3", page.Markup);
+            Assert.Contains("Item 11", page.Markup);
+            Assert.DoesNotContain("Item 01", page.Markup);
+        });
+    }
+
     private static IElement PriceHeaderButton(IRenderedComponent<Home> page) =>
         page.FindAll("th button")
             .First(button => button.TextContent.Trim().StartsWith("Price", StringComparison.Ordinal));
