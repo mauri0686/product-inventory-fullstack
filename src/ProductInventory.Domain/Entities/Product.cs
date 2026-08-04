@@ -1,4 +1,4 @@
-﻿using ProductInventory.Domain.Exceptions;
+using ProductInventory.Domain.Exceptions;
 
 namespace ProductInventory.Domain.Entities;
 

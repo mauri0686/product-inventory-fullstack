@@ -1,4 +1,4 @@
-﻿namespace ProductInventory.Domain.Exceptions;
+namespace ProductInventory.Domain.Exceptions;
 
 public sealed class ProductDomainException : Exception
 {

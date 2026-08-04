@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ProductInventory.Application.Exceptions;
 using ProductInventory.Application.Interfaces;
 using ProductInventory.Domain.Entities;

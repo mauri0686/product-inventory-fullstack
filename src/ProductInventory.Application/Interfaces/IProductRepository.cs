@@ -1,4 +1,4 @@
-﻿using ProductInventory.Domain.Entities;
+using ProductInventory.Domain.Entities;
 
 namespace ProductInventory.Application.Interfaces;
 

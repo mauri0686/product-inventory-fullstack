@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ProductInventory.Domain.Entities;
 using ProductInventory.Infrastructure.Data.Configurations;
 
