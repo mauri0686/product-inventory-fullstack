@@ -42,19 +42,23 @@ public class ProductRepository : IProductRepository
             query = query.Where(p => p.Price <= criteria.MaxPrice.Value);
 
         var totalCount = await query.CountAsync(ct);
+        var descending = string.Equals(
+            criteria.SortDirection,
+            "desc",
+            StringComparison.OrdinalIgnoreCase);
 
         query = criteria.SortBy.ToLowerInvariant() switch
         {
-            "price" => criteria.SortDirection == "desc"
+            "price" => descending
                 ? query.OrderByDescending(p => p.Price).ThenBy(p => p.Id)
                 : query.OrderBy(p => p.Price).ThenBy(p => p.Id),
-            "quantity" => criteria.SortDirection == "desc"
+            "quantity" => descending
                 ? query.OrderByDescending(p => p.Quantity).ThenBy(p => p.Id)
                 : query.OrderBy(p => p.Quantity).ThenBy(p => p.Id),
-            "isactive" => criteria.SortDirection == "desc"
+            "isactive" => descending
                 ? query.OrderByDescending(p => p.IsActive).ThenBy(p => p.Id)
                 : query.OrderBy(p => p.IsActive).ThenBy(p => p.Id),
-            _ => criteria.SortDirection == "desc"
+            _ => descending
                 ? query.OrderByDescending(p => p.Name).ThenBy(p => p.Id)
                 : query.OrderBy(p => p.Name).ThenBy(p => p.Id),
         };

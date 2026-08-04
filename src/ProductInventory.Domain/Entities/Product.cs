@@ -15,56 +15,61 @@ public sealed class Product
 
     public static Product Create(string name, decimal price, int quantity, bool isActive)
     {
-        var product = new Product { Id = Guid.NewGuid() };
-        product.SetName(name);
-        product.SetPrice(price);
-        product.SetQuantity(quantity);
-        product.IsActive = isActive;
-        return product;
+        return Create(Guid.NewGuid(), name, price, quantity, isActive);
     }
 
     public static Product Create(Guid id, string name, decimal price, int quantity, bool isActive)
     {
         if (id == Guid.Empty)
             throw new ProductDomainException("Id must be non-empty.");
-        var product = new Product { Id = id };
-        product.SetName(name);
-        product.SetPrice(price);
-        product.SetQuantity(quantity);
-        product.IsActive = isActive;
-        return product;
+        var (trimmedName, normalizedName) = ValidateName(name);
+        ValidatePrice(price);
+        ValidateQuantity(quantity);
+
+        return new Product
+        {
+            Id = id,
+            Name = trimmedName,
+            NormalizedName = normalizedName,
+            Price = price,
+            Quantity = quantity,
+            IsActive = isActive
+        };
     }
 
     public void Update(string name, decimal price, int quantity, bool isActive)
     {
-        SetName(name);
-        SetPrice(price);
-        SetQuantity(quantity);
+        var (trimmedName, normalizedName) = ValidateName(name);
+        ValidatePrice(price);
+        ValidateQuantity(quantity);
+
+        Name = trimmedName;
+        NormalizedName = normalizedName;
+        Price = price;
+        Quantity = quantity;
         IsActive = isActive;
     }
 
-    private void SetName(string name)
+    private static (string Name, string NormalizedName) ValidateName(string name)
     {
         var trimmed = name?.Trim();
         if (string.IsNullOrWhiteSpace(trimmed))
             throw new ProductDomainException("Product name cannot be empty.");
         if (trimmed.Length > 100)
             throw new ProductDomainException("Product name cannot exceed 100 characters.");
-        Name = trimmed;
-        NormalizedName = trimmed.ToUpperInvariant();
+
+        return (trimmed, trimmed.ToUpperInvariant());
     }
 
-    private void SetPrice(decimal price)
+    private static void ValidatePrice(decimal price)
     {
         if (price <= 0)
             throw new ProductDomainException("Price must be greater than zero.");
-        Price = price;
     }
 
-    private void SetQuantity(int quantity)
+    private static void ValidateQuantity(int quantity)
     {
         if (quantity < 0)
             throw new ProductDomainException("Quantity cannot be negative.");
-        Quantity = quantity;
     }
 }
