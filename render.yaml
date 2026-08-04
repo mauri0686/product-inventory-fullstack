@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: mauri-product-inventory-api
+    runtime: docker
+    plan: free
+    region: oregon
+    repo: https://github.com/mauri0686/product-inventory-fullstack
+    branch: main
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health/ready
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Demo
+      - key: AUTO_MIGRATE
+        value: "true"
+      - key: SeedDemoData
+        value: "true"
+      - key: Cors__AllowedOrigins__0
+        value: https://mauri0686.github.io
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mauri-product-inventory-db
+          property: connectionString
+
+databases:
+  - name: mauri-product-inventory-db
+    plan: free
+    region: oregon
+    postgresMajorVersion: "17"
+    databaseName: product_inventory
+    user: inventory
+    ipAllowList: []

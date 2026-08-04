@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Build, test, and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/*.csproj"
+
+      - name: Restore
+        run: dotnet restore ProductInventory.sln --locked-mode
+
+      - name: Verify formatting
+        run: dotnet format ProductInventory.sln --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build ProductInventory.sln --configuration Release --no-restore
+
+      - name: Test with coverage
+        run: >-
+          dotnet test ProductInventory.sln
+          --configuration Release
+          --no-build
+          --collect:"XPlat Code Coverage"
+          --results-directory artifacts/test-results
+          --logger "trx;LogFilePrefix=test-results"
+
+      - name: Check vulnerable dependencies
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          dotnet list ProductInventory.sln package --vulnerable --include-transitive | tee artifacts/vulnerabilities.txt
+          if grep -q "has the following vulnerable packages" artifacts/vulnerabilities.txt; then
+            exit 1
+          fi
+
+      - name: Check committed EF model
+        run: >-
+          dotnet ef migrations has-pending-model-changes
+          --project src/ProductInventory.Infrastructure
+          --startup-project src/ProductInventory.Api
+          --configuration Release
+          --no-build
+
+      - name: Publish test evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-evidence
+          path: artifacts
+          if-no-files-found: warn
+          retention-days: 14
