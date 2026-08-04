@@ -18,6 +18,7 @@ The free API can take about a minute to wake after inactivity. The demo is not a
 - Complete create, read, update, and delete flow through Blazor → API → PostgreSQL.
 - Immediate, case-insensitive client-side search while typing.
 - Client-side column sorting and pagination over the loaded inventory, plus automatic dark mode.
+- Progressive loading: the first batch renders immediately while the rest streams in; the dashboard reads exact totals from a dedicated `/summary` endpoint.
 - Server-side search, active status and price filters, sorting, and pagination.
 - Dashboard for total products, active products, and total inventory value.
 - A case-insensitive unique-name domain rule, enforced before persistence and by a database index.
@@ -159,7 +160,7 @@ The deployed smoke test creates a uniquely named product, edits it, searches for
 
 The WebAssembly `HttpProductRepository` is the only place with the challenge-required `Task.Delay(500)`. Each public repository operation supports cancellation. The API, application layer, EF Core, seeding, and tests contain no artificial latency.
 
-The client loads every API page in batches of 100. Search then filters the in-memory view immediately and case-insensitively; it does not issue a delayed request on each keystroke. Column sorting and pagination also run in the browser over the loaded collection, so the table stays responsive and the mobile view is not one long scroll. Dashboard figures always describe the complete collection, not the filtered view. PostgreSQL remains the only source of truth, so browser storage is intentionally absent.
+The client loads the inventory progressively: the first batch renders immediately and the remaining pages stream in the background behind a "loading more" indicator, so the user is not blocked on a full load. The dashboard reads exact totals from the dedicated `/summary` endpoint, so it is correct before every row has arrived. Search then filters the in-memory view immediately and case-insensitively; it does not issue a delayed request on each keystroke. Column sorting and pagination also run in the browser over the loaded collection, so the table stays responsive and the mobile view is not one long scroll. Dashboard figures always describe the complete collection, not the filtered view. PostgreSQL remains the only source of truth, so browser storage is intentionally absent.
 
 ## Deployment
 

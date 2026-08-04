@@ -42,6 +42,7 @@ absent) and verified against the live deployment:
 - Client-side pagination of the table (10 per page) so the mobile view is not one long scroll; the dashboard totals still cover the whole collection.
 - Automatic dark mode via `prefers-color-scheme` — verified: dark background `#0d1117`.
 - Per-client fixed-window rate limiting on the public API — verified: a 240-request burst returned `429` responses while the Playwright flow stayed green; health checks are exempt.
+- Progressive inventory load — the first batch renders immediately and the rest streams in behind a "loading more" indicator; the dashboard reads exact totals from `/summary`. Covered by a streaming bUnit test and verified live (dashboard 100 / 80 / $2,071,312.50 with all 100 rows paginated).
 
 ## Gate sign-offs
 
