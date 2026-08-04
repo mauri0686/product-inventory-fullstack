@@ -96,7 +96,9 @@ public static class DependencyInjection
         var uri = new Uri(url);
         var separatorIndex = uri.UserInfo.IndexOf(':');
         var host = uri.Host;
-        var port = uri.Port;
+        // Render's internal connection string omits the port (e.g. postgres://user:pass@host/db),
+        // and Uri.Port returns -1 for the unregistered postgres scheme. Fall back to the default.
+        var port = uri.Port > 0 ? uri.Port : 5432;
         var database = uri.AbsolutePath.TrimStart('/');
         var username = separatorIndex >= 0
             ? Uri.UnescapeDataString(uri.UserInfo[..separatorIndex])
