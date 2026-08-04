@@ -1,0 +1,23 @@
+@inherits LayoutComponentBase
+
+<ErrorBoundary>
+    <ChildContent>
+        @Body
+    </ChildContent>
+    <ErrorContent Context="exception">
+        <main class="page-shell fatal-error" role="alert">
+            <p class="eyebrow">Something went wrong</p>
+            <h1>We couldn't display this page</h1>
+            <p>Refresh the page to try again.</p>
+            <button class="button button-primary" type="button" @onclick="ReloadPage">Refresh page</button>
+        </main>
+    </ErrorContent>
+</ErrorBoundary>
+
+@code {
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    private void ReloadPage() => Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+}
+

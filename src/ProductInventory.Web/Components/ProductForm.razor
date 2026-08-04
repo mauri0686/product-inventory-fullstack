@@ -1,0 +1,84 @@
+<section class="editor-card" aria-labelledby="product-form-title">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">@(Model.IsEditing ? "Edit product" : "New product")</p>
+            <h2 id="product-form-title">@(Model.IsEditing ? $"Edit {Model.Name}" : "Add a product")</h2>
+        </div>
+    </div>
+
+    <EditForm Model="Model" OnValidSubmit="SubmitAsync" FormName="product-form" novalidate>
+        <DataAnnotationsValidator />
+        <ValidationSummary class="validation-summary" />
+
+        <fieldset disabled="@IsSaving">
+            <div class="form-grid">
+                <div class="form-field form-field-wide">
+                    <label for="product-name">Name</label>
+                    <InputText id="product-name"
+                               class="text-input"
+                               @bind-Value="Model.Name"
+                               autocomplete="off"
+                               autofocus
+                               maxlength="100" />
+                    <ValidationMessage For="() => Model.Name" />
+                </div>
+
+                <div class="form-field">
+                    <label for="product-price">Price (USD)</label>
+                    <InputNumber id="product-price"
+                                 class="text-input"
+                                 @bind-Value="Model.Price"
+                                 min="0.01"
+                                 step="0.01" />
+                    <ValidationMessage For="() => Model.Price" />
+                </div>
+
+                <div class="form-field">
+                    <label for="product-quantity">Quantity</label>
+                    <InputNumber id="product-quantity"
+                                 class="text-input"
+                                 @bind-Value="Model.Quantity"
+                                 min="0"
+                                 step="1" />
+                    <ValidationMessage For="() => Model.Quantity" />
+                </div>
+
+                <div class="form-field form-field-wide">
+                    <label class="checkbox-field" for="product-active">
+                        <InputCheckbox id="product-active" @bind-Value="Model.IsActive" />
+                        <span>
+                            <strong>Active</strong>
+                            <small>Active products are available in the inventory.</small>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="button button-secondary" type="button" @onclick="CancelAsync">Cancel</button>
+                <button class="button button-primary" type="submit">
+                    @(IsSaving ? "Saving…" : Model.IsEditing ? "Save changes" : "Add product")
+                </button>
+            </div>
+        </fieldset>
+    </EditForm>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public ProductFormModel Model { get; set; } = new();
+
+    [Parameter]
+    public bool IsSaving { get; set; }
+
+    [Parameter]
+    public EventCallback<ProductFormModel> OnSubmit { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private Task SubmitAsync() => OnSubmit.InvokeAsync(Model);
+
+    private Task CancelAsync() => OnCancel.InvokeAsync();
+}
+

@@ -1,0 +1,111 @@
+@using System.Globalization
+
+<div class="table-region" role="region" aria-labelledby="products-table-caption" tabindex="0">
+    <table id="products-table">
+        <caption id="products-table-caption">Products in inventory</caption>
+        <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col" class="numeric-column">Price</th>
+                <th scope="col" class="numeric-column">Quantity</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="actions-column">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in Products)
+            {
+                <tr @key="product.Id">
+                    <td data-label="Name" class="product-name">@product.Name</td>
+                    <td data-label="Price" class="numeric-column">@FormatCurrency(product.Price)</td>
+                    <td data-label="Quantity" class="numeric-column">@product.Quantity</td>
+                    <td data-label="Status">
+                        <span class="status-badge @(product.IsActive ? "status-active" : "status-inactive")">
+                            <span class="status-dot" aria-hidden="true"></span>
+                            @(product.IsActive ? "Active" : "Inactive")
+                        </span>
+                    </td>
+                    <td data-label="Actions" class="actions-cell">
+                        @if (PendingDeleteId == product.Id)
+                        {
+                            <div class="inline-confirmation" role="alert" aria-label="Delete confirmation">
+                                <span>Delete “@product.Name”?</span>
+                                <div class="row-actions">
+                                    <button class="button button-small button-secondary"
+                                            type="button"
+                                            autofocus
+                                            disabled="@(DeletingProductId is not null)"
+                                            @onclick="CancelDeleteAsync">
+                                        Cancel
+                                    </button>
+                                    <button class="button button-small button-danger"
+                                            type="button"
+                                            disabled="@(DeletingProductId is not null)"
+                                            @onclick="() => ConfirmDeleteAsync(product)">
+                                        @(DeletingProductId == product.Id ? "Deleting…" : "Delete")
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="row-actions">
+                                <button class="button button-small button-quiet"
+                                        type="button"
+                                        disabled="@ActionsDisabled"
+                                        @onclick="() => EditAsync(product)">
+                                    Edit
+                                </button>
+                                <button class="button button-small button-quiet button-quiet-danger"
+                                        type="button"
+                                        disabled="@ActionsDisabled"
+                                        @onclick="() => RequestDeleteAsync(product)">
+                                    Delete
+                                </button>
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private static readonly CultureInfo UsCulture = CultureInfo.GetCultureInfo("en-US");
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ProductResponse> Products { get; set; } = Array.Empty<ProductResponse>();
+
+    [Parameter]
+    public Guid? PendingDeleteId { get; set; }
+
+    [Parameter]
+    public Guid? DeletingProductId { get; set; }
+
+    [Parameter]
+    public bool ActionsDisabled { get; set; }
+
+    [Parameter]
+    public EventCallback<ProductResponse> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<ProductResponse> OnDeleteRequested { get; set; }
+
+    [Parameter]
+    public EventCallback<ProductResponse> OnDeleteConfirmed { get; set; }
+
+    [Parameter]
+    public EventCallback OnDeleteCancelled { get; set; }
+
+    private Task EditAsync(ProductResponse product) => OnEdit.InvokeAsync(product);
+
+    private Task RequestDeleteAsync(ProductResponse product) => OnDeleteRequested.InvokeAsync(product);
+
+    private Task ConfirmDeleteAsync(ProductResponse product) => OnDeleteConfirmed.InvokeAsync(product);
+
+    private Task CancelDeleteAsync() => OnDeleteCancelled.InvokeAsync();
+
+    private static string FormatCurrency(decimal value) => value.ToString("C2", UsCulture);
+}
+

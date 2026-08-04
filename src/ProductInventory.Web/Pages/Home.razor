@@ -1,0 +1,349 @@
+@page "/"
+@implements IDisposable
+@inject IProductRepository ProductRepository
+
+<PageTitle>Product inventory</PageTitle>
+
+<header class="site-header">
+    <div class="page-shell header-content">
+        <div>
+            <p class="eyebrow">Inventory workspace</p>
+            <h1>Product inventory</h1>
+            <p class="page-intro">Review stock, availability, and inventory value in one place.</p>
+        </div>
+        <button class="button button-primary header-action"
+                type="button"
+                disabled="@(_isInitialLoading || IsMutating)"
+                @onclick="StartCreate">
+            Add product
+        </button>
+    </div>
+</header>
+
+<main class="page-shell main-content"
+      aria-busy="@(_isInitialLoading || IsMutating)">
+    <aside class="demo-notice" aria-label="Demo API availability">
+        <span class="demo-notice-icon" aria-hidden="true">i</span>
+        <p><strong>Free demo hosting:</strong> the first request may take up to one minute while the API wakes up.</p>
+    </aside>
+
+    @if (_successMessage is not null)
+    {
+        <div class="notice notice-success" role="status" aria-live="polite">
+            <span>@_successMessage</span>
+            <button class="notice-dismiss" type="button" aria-label="Dismiss success message" @onclick="DismissSuccess">×</button>
+        </div>
+    }
+
+    @if (_errorMessage is not null)
+    {
+        <div class="notice notice-error" role="alert">
+            <div>
+                <strong>Unable to complete the request</strong>
+                <p>@_errorMessage</p>
+            </div>
+            <button class="button button-small button-secondary" type="button" @onclick="RetryAsync">Retry</button>
+        </div>
+    }
+
+    @if (_isInitialLoading)
+    {
+        <section class="loading-state" role="status" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span>
+            <div>
+                <h2>Loading inventory…</h2>
+                <p>Fetching every product so your totals stay accurate.</p>
+            </div>
+        </section>
+    }
+    else
+    {
+        <InventorySummary Products="_products" />
+
+        @if (_showForm)
+        {
+            <ProductForm @key="_formModel"
+                         Model="_formModel"
+                         IsSaving="_isSaving"
+                         OnSubmit="SaveProductAsync"
+                         OnCancel="CancelForm" />
+        }
+
+        <section class="inventory-section" aria-labelledby="products-heading">
+            <div class="section-heading inventory-heading">
+                <div>
+                    <p class="eyebrow">Catalog</p>
+                    <h2 id="products-heading">Products</h2>
+                </div>
+                <div class="search-control">
+                    <label for="product-search">Search products</label>
+                    <input id="product-search"
+                           type="search"
+                           placeholder="Search by name"
+                           autocomplete="off"
+                           @bind="_searchTerm"
+                           @bind:event="oninput"
+                           aria-controls="products-table" />
+                </div>
+            </div>
+
+            <p class="results-count" role="status" aria-live="polite">
+                @ResultsMessage
+            </p>
+
+            @if (_products.Count == 0)
+            {
+                <div class="empty-state" role="status">
+                    <div class="empty-icon" aria-hidden="true">□</div>
+                    <h3>Your inventory is empty</h3>
+                    <p>Add your first product to start tracking stock and value.</p>
+                    <button class="button button-primary" type="button" @onclick="StartCreate">Add first product</button>
+                </div>
+            }
+            else if (FilteredProducts.Count == 0)
+            {
+                <div class="empty-state" role="status">
+                    <div class="empty-icon" aria-hidden="true">⌕</div>
+                    <h3>No matching products</h3>
+                    <p>Try a different product name or clear the search.</p>
+                    <button class="button button-secondary" type="button" @onclick="ClearSearch">Clear search</button>
+                </div>
+            }
+            else
+            {
+                <ProductTable Products="FilteredProducts"
+                              PendingDeleteId="_pendingDeleteId"
+                              DeletingProductId="_deletingProductId"
+                              ActionsDisabled="IsMutating"
+                              OnEdit="StartEdit"
+                              OnDeleteRequested="RequestDelete"
+                              OnDeleteConfirmed="DeleteProductAsync"
+                              OnDeleteCancelled="CancelDelete" />
+            }
+        </section>
+    }
+</main>
+
+@code {
+    private const int PageSize = 100;
+
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private IReadOnlyList<ProductResponse> _products = Array.Empty<ProductResponse>();
+    private ProductFormModel _formModel = new();
+    private string _searchTerm = string.Empty;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private Guid? _pendingDeleteId;
+    private Guid? _deletingProductId;
+    private bool _isInitialLoading = true;
+    private bool _isSaving;
+    private bool _showForm;
+
+    private bool IsMutating => _isSaving || _deletingProductId is not null;
+
+    private IReadOnlyList<ProductResponse> FilteredProducts => string.IsNullOrWhiteSpace(_searchTerm)
+        ? _products
+        : _products
+            .Where(product => product.Name.Contains(_searchTerm.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+    private string ResultsMessage => _products.Count == 0
+        ? "No products in inventory"
+        : string.IsNullOrWhiteSpace(_searchTerm)
+            ? $"Showing all {_products.Count} {ProductWord(_products.Count)}"
+            : $"{FilteredProducts.Count} {ProductWord(FilteredProducts.Count)} found";
+
+    protected override async Task OnInitializedAsync() => await LoadInventoryAsync(showInitialLoader: true);
+
+    private async Task LoadInventoryAsync(bool showInitialLoader)
+    {
+        if (showInitialLoader)
+        {
+            _isInitialLoading = true;
+        }
+
+        _errorMessage = null;
+
+        try
+        {
+            _products = await LoadAllProductsAsync(_lifetimeCancellation.Token);
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (ProductApiException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        catch (Exception)
+        {
+            _errorMessage = "We couldn't load the inventory. Check that the API is available, then try again.";
+        }
+        finally
+        {
+            if (showInitialLoader)
+            {
+                _isInitialLoading = false;
+            }
+        }
+    }
+
+    private async Task<IReadOnlyList<ProductResponse>> LoadAllProductsAsync(CancellationToken cancellationToken)
+    {
+        var firstPage = await ProductRepository.GetProductsAsync(1, PageSize, cancellationToken);
+        var products = new List<ProductResponse>(firstPage.Items);
+        var pageCount = (int)Math.Ceiling(firstPage.TotalCount / (double)PageSize);
+
+        if (pageCount > 1)
+        {
+            var remainingPageTasks = Enumerable.Range(2, pageCount - 1)
+                .Select(page => ProductRepository.GetProductsAsync(page, PageSize, cancellationToken));
+            var remainingPages = await Task.WhenAll(remainingPageTasks);
+
+            foreach (var page in remainingPages)
+            {
+                products.AddRange(page.Items);
+            }
+        }
+
+        return products
+            .OrderBy(product => product.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(product => product.Id)
+            .ToArray();
+    }
+
+    private void StartCreate()
+    {
+        _errorMessage = null;
+        _successMessage = null;
+        _pendingDeleteId = null;
+        _formModel = new ProductFormModel { IsActive = true };
+        _showForm = true;
+    }
+
+    private void StartEdit(ProductResponse product)
+    {
+        _errorMessage = null;
+        _successMessage = null;
+        _pendingDeleteId = null;
+        _formModel = ProductFormModel.FromProduct(product);
+        _showForm = true;
+    }
+
+    private async Task SaveProductAsync(ProductFormModel model)
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+        var mutationCompleted = false;
+        var action = model.IsEditing ? "updated" : "created";
+        var productName = model.Name.Trim();
+
+        try
+        {
+            if (model.IsEditing)
+            {
+                await ProductRepository.UpdateProductAsync(
+                    model.Id, model.ToRequest(), _lifetimeCancellation.Token);
+            }
+            else
+            {
+                await ProductRepository.CreateProductAsync(
+                    model.ToRequest(), _lifetimeCancellation.Token);
+            }
+
+            mutationCompleted = true;
+            _products = await LoadAllProductsAsync(_lifetimeCancellation.Token);
+            _showForm = false;
+            _successMessage = $"{productName} was {action}.";
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (ProductApiException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        catch (Exception)
+        {
+            _errorMessage = mutationCompleted
+                ? $"{productName} was {action}, but the refreshed inventory couldn't be loaded."
+                : $"We couldn't {action.TrimEnd('d')} {productName}. Your changes weren't confirmed.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void CancelForm()
+    {
+        _showForm = false;
+        _formModel = new ProductFormModel();
+    }
+
+    private void RequestDelete(ProductResponse product)
+    {
+        _showForm = false;
+        _pendingDeleteId = product.Id;
+        _errorMessage = null;
+        _successMessage = null;
+    }
+
+    private async Task DeleteProductAsync(ProductResponse product)
+    {
+        _deletingProductId = product.Id;
+        _errorMessage = null;
+        _successMessage = null;
+        var mutationCompleted = false;
+
+        try
+        {
+            await ProductRepository.DeleteProductAsync(product.Id, _lifetimeCancellation.Token);
+            mutationCompleted = true;
+            _products = await LoadAllProductsAsync(_lifetimeCancellation.Token);
+            _pendingDeleteId = null;
+            _successMessage = $"{product.Name} was deleted.";
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (ProductApiException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        catch (Exception)
+        {
+            _errorMessage = mutationCompleted
+                ? $"{product.Name} was deleted, but the refreshed inventory couldn't be loaded."
+                : $"We couldn't delete {product.Name}. The product is still in the inventory.";
+        }
+        finally
+        {
+            _deletingProductId = null;
+        }
+    }
+
+    private void CancelDelete() => _pendingDeleteId = null;
+
+    private async Task RetryAsync()
+    {
+        _pendingDeleteId = null;
+        await LoadInventoryAsync(showInitialLoader: _products.Count == 0);
+    }
+
+    private void ClearSearch() => _searchTerm = string.Empty;
+
+    private void DismissSuccess() => _successMessage = null;
+
+    private static string ProductWord(int count) => count == 1 ? "product" : "products";
+
+    public void Dispose()
+    {
+        _lifetimeCancellation.Cancel();
+        _lifetimeCancellation.Dispose();
+    }
+}

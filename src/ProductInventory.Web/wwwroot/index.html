@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A focused product inventory workspace built with Blazor WebAssembly." />
+    <base href="/" />
+    <link rel="stylesheet" href="css/app.css" />
+    <title>Product inventory</title>
+    <script>
+        (function (location) {
+            if (location.search.startsWith('?/')) {
+                var decodedRoute = location.search
+                    .slice(2)
+                    .split('&')
+                    .map(function (part) { return part.replace(/~and~/g, '&'); })
+                    .join('?');
+                window.history.replaceState(null, '', location.pathname.slice(0, -1) + '/' + decodedRoute + location.hash);
+            }
+        }(window.location));
+    </script>
+</head>
+
+<body>
+    <div id="app">
+        <main class="startup-state" role="status" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span>
+            <p>Starting product inventory…</p>
+        </main>
+    </div>
+
+    <div id="blazor-error-ui" role="alert">
+        The application encountered an unexpected error.
+        <a href="" class="reload">Reload</a>
+        <button type="button" class="dismiss" aria-label="Dismiss error">×</button>
+    </div>
+
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>
+
