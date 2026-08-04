@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using ProductInventory.Application.Exceptions;
@@ -10,6 +11,7 @@ public sealed class ProductExceptionHandler : IExceptionHandler
 {
     private readonly ILogger<ProductExceptionHandler> _logger;
     private const string ProblemJsonContentType = "application/problem+json";
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public ProductExceptionHandler(ILogger<ProductExceptionHandler> logger)
     {
@@ -54,7 +56,11 @@ public sealed class ProductExceptionHandler : IExceptionHandler
         httpContext.Response.StatusCode = problem.Status ?? 500;
         httpContext.Response.ContentType = ProblemJsonContentType;
 
-        await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
+        await JsonSerializer.SerializeAsync(
+            httpContext.Response.Body,
+            problem,
+            JsonOptions,
+            cancellationToken);
         return true;
     }
 
