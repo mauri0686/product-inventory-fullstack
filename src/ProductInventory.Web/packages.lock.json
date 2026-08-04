@@ -29,9 +29,9 @@
       },
       "Microsoft.NET.Sdk.WebAssembly.Pack": {
         "type": "Direct",
-        "requested": "[9.0.10, )",
-        "resolved": "9.0.10",
-        "contentHash": "Ye7Zr/1d5cMeXyqv2uaEYrZjgRAcZKTXE/dJByxhicD7jLQSQcwmuBZzIXi+SY5sZbvKeH7nSTcVa7fOrJArfw=="
+        "requested": "[9.0.18, )",
+        "resolved": "9.0.18",
+        "contentHash": "0P9vlmQPWdj+Lp1UBHF6fivOHK82DHLDe3kSDO9+Zje2pRYUJ97bnURxeFFql4ORXDvY6/CWziDVuOhFmmlnyg=="
       },
       "Microsoft.AspNetCore.Authorization": {
         "type": "Transitive",
