@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProductInventory.Api.Middleware;
@@ -90,6 +91,24 @@ if (builder.Environment.IsDevelopment() ||
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ProductDbContext>("postgresql", tags: ["ready"]);
 
+// Rate limiting for the public demo. Applied to controllers only (health stays exempt) and
+// skipped in the Testing environment so integration tests are not throttled.
+// ponytail: fixed window per client IP; behind a proxy this degrades to a shared window, which is
+// adequate abuse protection for a demo. Tighten/partition further if it ever fronts real traffic.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("public", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 200,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+});
+
 var app = builder.Build();
 
 // Middleware pipeline
@@ -106,7 +125,13 @@ if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Demo"
 }
 
 app.UseCors("Frontend");
-app.MapControllers();
+app.UseRateLimiter();
+
+var controllers = app.MapControllers();
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    controllers.RequireRateLimiting("public");
+}
 
 // Health endpoints
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
