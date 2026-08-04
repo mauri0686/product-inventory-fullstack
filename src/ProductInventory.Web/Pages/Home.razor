@@ -69,7 +69,10 @@
     }
     else
     {
-        <InventorySummary Products="_products" />
+        @if (_summary is not null)
+        {
+            <InventorySummary Summary="_summary" />
+        }
 
         @if (_showForm)
         {
@@ -101,6 +104,14 @@
             <p class="results-count" role="status" aria-live="polite">
                 @ResultsMessage
             </p>
+
+            @if (_isLoadingMore)
+            {
+                <p class="loading-more" role="status" aria-live="polite">
+                    <span class="spinner spinner-small" aria-hidden="true"></span>
+                    Loading more products…
+                </p>
+            }
 
             @if (_products.Count == 0)
             {
@@ -136,10 +147,11 @@
 </main>
 
 @code {
-    private const int PageSize = 100;
+    private const int FetchPageSize = 25;
 
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private IReadOnlyList<ProductResponse> _products = Array.Empty<ProductResponse>();
+    private InventorySummaryResponse? _summary;
     private ProductFormModel _formModel = new();
     private string _searchTerm = string.Empty;
     private string? _errorMessage;
@@ -148,6 +160,7 @@
     private Guid? _deletingProductId;
     private bool _isInitialLoading = true;
     private bool _isInitialConnectionFailure;
+    private bool _isLoadingMore;
     private bool _isSaving;
     private bool _showForm;
 
@@ -175,11 +188,26 @@
         }
 
         _errorMessage = null;
+        var cancellationToken = _lifetimeCancellation.Token;
 
         try
         {
-            _products = await LoadAllProductsAsync(_lifetimeCancellation.Token);
+            // The dashboard reads exact totals from the summary endpoint, so it is correct even
+            // before every product page has streamed in.
+            var summaryTask = LoadSummaryAsync(cancellationToken);
+
+            var firstPage = await ProductRepository.GetProductsAsync(1, FetchPageSize, cancellationToken);
+            _products = firstPage.Items.ToArray();
             _isInitialConnectionFailure = false;
+
+            if (showInitialLoader)
+            {
+                _isInitialLoading = false; // render the first batch immediately
+                StateHasChanged();
+            }
+
+            await LoadRemainingPagesAsync(firstPage.TotalCount, cancellationToken);
+            await summaryTask;
         }
         catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
         {
@@ -197,6 +225,7 @@
         }
         finally
         {
+            _isLoadingMore = false;
             if (showInitialLoader)
             {
                 _isInitialLoading = false;
@@ -204,28 +233,50 @@
         }
     }
 
-    private async Task<IReadOnlyList<ProductResponse>> LoadAllProductsAsync(CancellationToken cancellationToken)
+    private async Task ReloadInventoryAsync(CancellationToken cancellationToken)
     {
-        var firstPage = await ProductRepository.GetProductsAsync(1, PageSize, cancellationToken);
-        var products = new List<ProductResponse>(firstPage.Items);
-        var pageCount = (int)Math.Ceiling(firstPage.TotalCount / (double)PageSize);
+        var summaryTask = LoadSummaryAsync(cancellationToken);
+        var firstPage = await ProductRepository.GetProductsAsync(1, FetchPageSize, cancellationToken);
+        _products = firstPage.Items.ToArray();
+        await LoadRemainingPagesAsync(firstPage.TotalCount, cancellationToken);
+        await summaryTask;
+    }
 
-        if (pageCount > 1)
+    private async Task LoadRemainingPagesAsync(int totalCount, CancellationToken cancellationToken)
+    {
+        var pageCount = (int)Math.Ceiling(totalCount / (double)FetchPageSize);
+        if (pageCount <= 1)
         {
-            var remainingPageTasks = Enumerable.Range(2, pageCount - 1)
-                .Select(page => ProductRepository.GetProductsAsync(page, PageSize, cancellationToken));
-            var remainingPages = await Task.WhenAll(remainingPageTasks);
-
-            foreach (var page in remainingPages)
-            {
-                products.AddRange(page.Items);
-            }
+            return;
         }
 
-        return products
-            .OrderBy(product => product.Name, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(product => product.Id)
-            .ToArray();
+        _isLoadingMore = true;
+        var loaded = new List<ProductResponse>(_products);
+        for (var page = 2; page <= pageCount; page++)
+        {
+            var next = await ProductRepository.GetProductsAsync(page, FetchPageSize, cancellationToken);
+            loaded.AddRange(next.Items);
+            _products = loaded.ToArray();
+            StateHasChanged();
+        }
+
+        _isLoadingMore = false;
+    }
+
+    private async Task LoadSummaryAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            _summary = await ProductRepository.GetSummaryAsync(cancellationToken);
+            StateHasChanged();
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch
+        {
+            // Non-fatal: the table still loads; the dashboard stays hidden until a summary succeeds.
+        }
     }
 
     private void StartCreate()
@@ -269,7 +320,7 @@
             }
 
             mutationCompleted = true;
-            _products = await LoadAllProductsAsync(_lifetimeCancellation.Token);
+            await ReloadInventoryAsync(_lifetimeCancellation.Token);
             _showForm = false;
             _successMessage = $"{productName} was {action}.";
         }
@@ -318,7 +369,7 @@
         {
             await ProductRepository.DeleteProductAsync(product.Id, _lifetimeCancellation.Token);
             mutationCompleted = true;
-            _products = await LoadAllProductsAsync(_lifetimeCancellation.Token);
+            await ReloadInventoryAsync(_lifetimeCancellation.Token);
             _pendingDeleteId = null;
             _successMessage = $"{product.Name} was deleted.";
         }

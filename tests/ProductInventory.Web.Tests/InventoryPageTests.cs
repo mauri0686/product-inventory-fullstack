@@ -209,6 +209,25 @@ public sealed class InventoryPageTests : BunitContext
         });
     }
 
+    [Fact]
+    public void Streams_remaining_pages_after_the_first_batch()
+    {
+        var products = Enumerable.Range(1, 60)
+            .Select(i => new ProductResponse(Guid.NewGuid(), $"Item {i:D2}", i, i, true))
+            .ToArray();
+        var repository = new FakeProductRepository(products);
+        Services.AddSingleton<IProductRepository>(repository);
+
+        var page = Render<Home>();
+
+        // The first fetch batch is 25; the rest must stream in until all 60 are client-paginated.
+        page.WaitForAssertion(() =>
+        {
+            Assert.Contains("Page 1 of 6", page.Markup);
+            Assert.True(repository.ListCalls >= 3);
+        });
+    }
+
     private static IElement PriceHeaderButton(IRenderedComponent<Home> page) =>
         page.FindAll("th button")
             .First(button => button.TextContent.Trim().StartsWith("Price", StringComparison.Ordinal));

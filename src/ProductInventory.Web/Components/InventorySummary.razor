@@ -5,17 +5,17 @@
     <div class="summary-grid">
         <article class="summary-card">
             <p class="summary-label">Total products</p>
-            <p class="summary-value">@Products.Count</p>
+            <p class="summary-value">@(Summary?.TotalProducts ?? 0)</p>
             <p class="summary-detail">Across the full inventory</p>
         </article>
         <article class="summary-card">
             <p class="summary-label">Active products</p>
-            <p class="summary-value">@ActiveProducts</p>
+            <p class="summary-value">@(Summary?.ActiveProducts ?? 0)</p>
             <p class="summary-detail">Currently available</p>
         </article>
         <article class="summary-card summary-card-emphasis">
             <p class="summary-label">Inventory value</p>
-            <p class="summary-value">@FormatCurrency(InventoryValue)</p>
+            <p class="summary-value">@FormatCurrency(Summary?.InventoryValue ?? 0)</p>
             <p class="summary-detail">Price × quantity</p>
         </article>
     </div>
@@ -25,11 +25,7 @@
     private static readonly CultureInfo UsCulture = CultureInfo.GetCultureInfo("en-US");
 
     [Parameter, EditorRequired]
-    public IReadOnlyCollection<ProductResponse> Products { get; set; } = Array.Empty<ProductResponse>();
-
-    private int ActiveProducts => Products.Count(product => product.IsActive);
-
-    private decimal InventoryValue => Products.Sum(product => product.Price * product.Quantity);
+    public InventorySummaryResponse? Summary { get; set; }
 
     private static string FormatCurrency(decimal value) => value.ToString("C2", UsCulture);
 }
