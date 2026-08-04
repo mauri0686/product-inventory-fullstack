@@ -645,16 +645,6 @@ fieldset {
     color: var(--text-muted);
 }
 
-.connection-state-error {
-    border-color: #efb0b9;
-    background: var(--danger-soft);
-}
-
-.connection-state-error h2,
-.connection-state-error p:not(.eyebrow) {
-    color: #761523;
-}
-
 .loading-state h2 {
     margin-bottom: 0.25rem;
 }

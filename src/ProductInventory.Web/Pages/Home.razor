@@ -58,18 +58,12 @@
     }
     else if (_isInitialConnectionFailure)
     {
-        <section class="connection-state @(_hasRetriedInitialLoad ? "connection-state-error" : string.Empty)"
-                 role="@(_hasRetriedInitialLoad ? "alert" : "status")"
-                 aria-live="polite">
+        <section class="connection-state" role="status" aria-live="polite">
             <div>
                 <p class="eyebrow">Demo API</p>
-                <h2>@(_hasRetriedInitialLoad ? "The demo API is still unavailable" : "Connecting to the demo API")</h2>
-                <p>
-                    @(_hasRetriedInitialLoad
-                        ? _errorMessage
-                        : "The hosted API may need up to one minute to wake up. You can retry when it is ready.")
-                </p>
-                <button class="button button-primary" type="button" @onclick="RetryAsync">Retry</button>
+                <h2>The demo API is getting ready</h2>
+                <p>The hosted API may need up to one minute to wake up. Try again when it is ready.</p>
+                <button class="button button-primary" type="button" @onclick="RetryAsync">Try again</button>
             </div>
         </section>
     }
@@ -154,7 +148,6 @@
     private Guid? _deletingProductId;
     private bool _isInitialLoading = true;
     private bool _isInitialConnectionFailure;
-    private bool _hasRetriedInitialLoad;
     private bool _isSaving;
     private bool _showForm;
 
@@ -187,7 +180,6 @@
         {
             _products = await LoadAllProductsAsync(_lifetimeCancellation.Token);
             _isInitialConnectionFailure = false;
-            _hasRetriedInitialLoad = false;
         }
         catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
         {
@@ -355,7 +347,6 @@
     private async Task RetryAsync()
     {
         _pendingDeleteId = null;
-        _hasRetriedInitialLoad |= _isInitialConnectionFailure;
         await LoadInventoryAsync(showInitialLoader: _products.Count == 0);
     }
 

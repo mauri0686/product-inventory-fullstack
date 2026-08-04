@@ -138,9 +138,9 @@ public sealed class InventoryPageTests : BunitContext
 
         var page = Render<Home>();
         page.WaitForAssertion(() =>
-            Assert.Contains("Connecting to the demo API", FindByRole(page, "status").TextContent));
+            Assert.Contains("The demo API is getting ready", FindByRole(page, "status").TextContent));
 
-        FindButton(page, "Retry").Click();
+        FindButton(page, "Try again").Click();
 
         page.WaitForAssertion(() =>
         {
@@ -150,7 +150,7 @@ public sealed class InventoryPageTests : BunitContext
     }
 
     [Fact]
-    public void A_second_initial_connection_failure_is_shown_as_an_error()
+    public void A_second_initial_connection_failure_remains_a_neutral_retry_state()
     {
         var repository = new FakeProductRepository(SampleProducts())
         {
@@ -159,12 +159,15 @@ public sealed class InventoryPageTests : BunitContext
         Services.AddSingleton<IProductRepository>(repository);
 
         var page = Render<Home>();
-        page.WaitForAssertion(() => Assert.Contains("Connecting to the demo API", page.Markup));
+        page.WaitForAssertion(() => Assert.Contains("The demo API is getting ready", page.Markup));
 
-        FindButton(page, "Retry").Click();
+        FindButton(page, "Try again").Click();
 
         page.WaitForAssertion(() =>
-            Assert.Contains("The demo API is still unavailable", FindByRole(page, "alert").TextContent));
+        {
+            Assert.Contains("The demo API is getting ready", FindByRole(page, "status").TextContent);
+            Assert.Empty(page.FindAll("[role='alert']"));
+        });
     }
 
     private static ProductResponse[] SampleProducts() =>
