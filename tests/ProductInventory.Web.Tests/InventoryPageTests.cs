@@ -138,7 +138,7 @@ public sealed class InventoryPageTests : BunitContext
 
         var page = Render<Home>();
         page.WaitForAssertion(() =>
-            Assert.Contains("Unable to complete the request", FindByRole(page, "alert").TextContent));
+            Assert.Contains("Connecting to the demo API", FindByRole(page, "status").TextContent));
 
         FindButton(page, "Retry").Click();
 
@@ -147,6 +147,24 @@ public sealed class InventoryPageTests : BunitContext
             Assert.Contains("Mechanical keyboard", page.Markup);
             Assert.Equal(2, repository.ListCalls);
         });
+    }
+
+    [Fact]
+    public void A_second_initial_connection_failure_is_shown_as_an_error()
+    {
+        var repository = new FakeProductRepository(SampleProducts())
+        {
+            FailingListCallsRemaining = 2
+        };
+        Services.AddSingleton<IProductRepository>(repository);
+
+        var page = Render<Home>();
+        page.WaitForAssertion(() => Assert.Contains("Connecting to the demo API", page.Markup));
+
+        FindButton(page, "Retry").Click();
+
+        page.WaitForAssertion(() =>
+            Assert.Contains("The demo API is still unavailable", FindByRole(page, "alert").TextContent));
     }
 
     private static ProductResponse[] SampleProducts() =>

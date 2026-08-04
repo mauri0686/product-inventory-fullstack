@@ -600,6 +600,7 @@ fieldset {
 }
 
 .loading-state,
+.connection-state,
 .startup-state,
 .empty-state,
 .fatal-error,
@@ -618,6 +619,40 @@ fieldset {
     border-radius: var(--radius);
     background: var(--surface);
     box-shadow: var(--shadow);
+}
+
+.connection-state {
+    display: grid;
+    min-height: 18rem;
+    place-items: center;
+    padding: 2rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.connection-state > div {
+    max-width: 38rem;
+}
+
+.connection-state h2 {
+    margin-bottom: 0.35rem;
+}
+
+.connection-state p:not(.eyebrow) {
+    margin-bottom: 1.25rem;
+    color: var(--text-muted);
+}
+
+.connection-state-error {
+    border-color: #efb0b9;
+    background: var(--danger-soft);
+}
+
+.connection-state-error h2,
+.connection-state-error p:not(.eyebrow) {
+    color: #761523;
 }
 
 .loading-state h2 {
