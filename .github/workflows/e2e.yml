@@ -1,0 +1,66 @@
+name: Public E2E
+
+on:
+  workflow_run:
+    workflows: [Deploy GitHub Pages]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-e2e
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WEB_BASE_URL: https://mauri0686.github.io/product-inventory-fullstack/
+      API_BASE_URL: https://mauri-product-inventory-api.onrender.com/
+
+    steps:
+      - name: Check out deployed revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore and build smoke tests
+        run: >-
+          dotnet build tests/ProductInventory.E2ETests/ProductInventory.E2ETests.csproj
+          --configuration Release
+
+      - name: Install Chromium
+        shell: pwsh
+        run: >-
+          ./tests/ProductInventory.E2ETests/bin/Release/net9.0/playwright.ps1
+          install --with-deps chromium
+
+      - name: Run public CRUD smoke test
+        run: >-
+          dotnet test tests/ProductInventory.E2ETests/ProductInventory.E2ETests.csproj
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=public-e2e.trx"
+
+      - name: Upload smoke-test evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: public-e2e-evidence
+          path: |
+            artifacts/e2e
+            tests/ProductInventory.E2ETests/TestResults
+          if-no-files-found: warn
+          retention-days: 14
