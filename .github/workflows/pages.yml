@@ -38,12 +38,18 @@ jobs:
         with:
           global-json-file: global.json
           cache: true
-          cache-dependency-path: "**/*.csproj"
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore locked dependencies
+        run: >-
+          dotnet restore src/ProductInventory.Web/ProductInventory.Web.csproj
+          --locked-mode
 
       - name: Publish Blazor WebAssembly
         run: >-
           dotnet publish src/ProductInventory.Web/ProductInventory.Web.csproj
           --configuration Release
+          --no-restore
           --output artifacts/pages
 
       - name: Prepare project-site paths

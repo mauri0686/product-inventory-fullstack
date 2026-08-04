@@ -25,7 +25,10 @@ jobs:
         with:
           global-json-file: global.json
           cache: true
-          cache-dependency-path: "**/*.csproj"
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore local tools
+        run: dotnet tool restore
 
       - name: Restore
         run: dotnet restore ProductInventory.sln --locked-mode

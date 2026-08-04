@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 COPY . .
-RUN dotnet restore src/ProductInventory.Api/ProductInventory.Api.csproj
+RUN dotnet restore src/ProductInventory.Api/ProductInventory.Api.csproj --locked-mode
 RUN dotnet publish src/ProductInventory.Api/ProductInventory.Api.csproj \
     --configuration Release \
     --no-restore \

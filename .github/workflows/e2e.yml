@@ -36,10 +36,16 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Restore and build smoke tests
+      - name: Restore smoke tests
+        run: >-
+          dotnet restore tests/ProductInventory.E2ETests/ProductInventory.E2ETests.csproj
+          --locked-mode
+
+      - name: Build smoke tests
         run: >-
           dotnet build tests/ProductInventory.E2ETests/ProductInventory.E2ETests.csproj
           --configuration Release
+          --no-restore
 
       - name: Install Chromium
         shell: pwsh
