@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net9.0": {
+      "productinventory.contracts": {
+        "type": "Project"
+      },
+      "productinventory.domain": {
+        "type": "Project"
+      }
+    }
+  }
+}
