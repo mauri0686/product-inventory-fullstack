@@ -170,6 +170,28 @@ public sealed class InventoryPageTests : BunitContext
         });
     }
 
+    [Fact]
+    public void Sorts_by_price_ascending_then_descending_on_header_click()
+    {
+        var repository = new FakeProductRepository(SampleProducts());
+        Services.AddSingleton<IProductRepository>(repository);
+        var page = Render<Home>();
+        page.WaitForAssertion(() => Assert.Contains("Mechanical keyboard", page.Markup));
+
+        PriceHeaderButton(page).Click();
+        Assert.StartsWith("Monitor stand", FirstRowName(page), StringComparison.Ordinal);
+
+        PriceHeaderButton(page).Click();
+        Assert.StartsWith("Mechanical keyboard", FirstRowName(page), StringComparison.Ordinal);
+    }
+
+    private static IElement PriceHeaderButton(IRenderedComponent<Home> page) =>
+        page.FindAll("th button")
+            .First(button => button.TextContent.Trim().StartsWith("Price", StringComparison.Ordinal));
+
+    private static string FirstRowName(IRenderedComponent<Home> page) =>
+        page.FindAll("tbody tr").First().QuerySelector(".product-name")!.TextContent.Trim();
+
     private static ProductResponse[] SampleProducts() =>
     [
         new ProductResponse(Guid.NewGuid(), "Mechanical keyboard", 120m, 4, true),
